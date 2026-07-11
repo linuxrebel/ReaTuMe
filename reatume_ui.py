@@ -23,7 +23,7 @@ CLI = SCRIPT_DIR / "bin" / "reatume.js"
 SAMPLE_TEXT = "The quick brown fox reads this article aloud."
 
 # espeak defaults, written to config.json on first run.
-DEFAULTS = {"voice": "en-us", "speed": 175, "wordGap": 0}
+DEFAULTS = {"engine": "espeak", "voice": "en-us", "piperModel": "", "speed": 175, "wordGap": 0}
 
 
 def config_path() -> Path:
