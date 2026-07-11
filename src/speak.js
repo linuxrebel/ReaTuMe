@@ -1,8 +1,65 @@
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
+const fs = require('fs');
 
-// Speak text aloud via espeak-ng. Optionally also save WAV to outFile.
-// Resolves when playback finishes.
-function speak(text, { speed, voice, gap, outFile } = {}) {
+// Read sample rate from a Piper model's JSON sidecar (default 22050).
+function piperSampleRate(modelPath) {
+  try {
+    const cfg = JSON.parse(fs.readFileSync(`${modelPath}.json`, 'utf8'));
+    return cfg.audio && cfg.audio.sample_rate ? cfg.audio.sample_rate : 22050;
+  } catch {
+    return 22050;
+  }
+}
+
+function piperAvailable() {
+  return spawnSync('piper', ['--help']).error == null;
+}
+
+// Speak via Piper: text -> piper stdin, raw PCM -> aplay. Resolves on finish or
+// signal. Kills BOTH children on SIGTERM/SIGINT so Stop leaves no orphans.
+function speakPiper(text, { model, speed }) {
+  const rate = piperSampleRate(model);
+  const args = ['-m', model, '--output-raw'];
+  if (speed) {
+    const scale = Math.min(2.0, Math.max(0.5, 175 / speed)); // wpm -> length_scale
+    args.push('--length-scale', String(scale));
+  }
+  return new Promise((resolve, reject) => {
+    const piper = spawn('piper', args, { stdio: ['pipe', 'pipe', 'inherit'] });
+    const player = spawn('aplay', ['-t', 'raw', '-f', 'S16_LE', '-r', String(rate), '-c', '1', '-'],
+      { stdio: ['pipe', 'inherit', 'inherit'] });
+    piper.stdout.pipe(player.stdin);
+
+    const killAll = () => { piper.kill('SIGKILL'); player.kill('SIGKILL'); };
+    const onSignal = () => killAll();
+    process.once('SIGTERM', onSignal);
+    process.once('SIGINT', onSignal);
+    const cleanup = () => {
+      process.removeListener('SIGTERM', onSignal);
+      process.removeListener('SIGINT', onSignal);
+    };
+
+    let settled = false;
+    const done = (fn, arg) => { if (!settled) { settled = true; cleanup(); fn(arg); } };
+    piper.on('error', (e) => { killAll(); done(reject, e); });
+    player.on('error', (e) => { killAll(); done(reject, e); });
+    // Resolve when the player finishes (audio fully played), or on purposeful signal.
+    player.on('close', (code, signal) => { killAll(); (code === 0 || signal) ? done(resolve) : done(reject, new Error(`aplay exited ${code}`)); });
+
+    piper.stdin.write(text);
+    piper.stdin.end();
+  });
+}
+
+// Speak text aloud. engine: "espeak" (default) or "piper". Piper falls back to
+// espeak (with a notice) when its binary or model is missing.
+function speak(text, { engine, voice, model, speed, gap, outFile } = {}) {
+  if (engine === 'piper') {
+    if (piperAvailable() && model && fs.existsSync(model)) {
+      return speakPiper(text, { model, speed });
+    }
+    process.stderr.write('Piper unavailable (binary or model missing); using espeak.\n');
+  }
   const args = [];
   if (speed) args.push('-s', String(speed));
   if (voice) args.push('-v', voice);
