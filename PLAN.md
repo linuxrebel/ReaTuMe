@@ -50,7 +50,8 @@ ReaTuMe/
 
 ## Setup
 
-One-time: `npx playwright install firefox` (~90MB binary).
+None needed — Playwright + Firefox binary already installed system-wide
+(global `playwright` npm package, `~/.cache/ms-playwright/firefox-*`).
 
 ## Open items / future
 
