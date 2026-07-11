@@ -25,10 +25,13 @@ function speakPiper(text, { model, speed }) {
     args.push('--length-scale', String(scale));
   }
   return new Promise((resolve, reject) => {
-    const piper = spawn('piper', args, { stdio: ['pipe', 'pipe', 'inherit'] });
+    // Connect piper's stdout straight into aplay's stdin at the fd level — node
+    // must NOT sit in the audio byte path, or a stalled event loop / backpressured
+    // stderr would underrun aplay and garble the PCM. Child logs are dropped
+    // ('ignore') so nothing can backpressure through the parent.
+    const piper = spawn('piper', args, { stdio: ['pipe', 'pipe', 'ignore'] });
     const player = spawn('aplay', ['-t', 'raw', '-f', 'S16_LE', '-r', String(rate), '-c', '1', '-'],
-      { stdio: ['pipe', 'inherit', 'inherit'] });
-    piper.stdout.pipe(player.stdin);
+      { stdio: [piper.stdout, 'ignore', 'ignore'] });
 
     const killAll = () => { piper.kill('SIGKILL'); player.kill('SIGKILL'); };
     const onSignal = () => killAll();
