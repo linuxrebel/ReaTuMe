@@ -62,6 +62,18 @@ npm install
 npx playwright install firefox   # one-time, ~105 MB
 ```
 
+## System install
+
+Installs the app to `/opt/reatume` and the `reatume` command to
+`/usr/local/bin`. Run `npm install` first (node_modules is copied along).
+
+```
+sudo ./install.sh      # install or update (re-run to update)
+sudo ./uninstall.sh    # remove app, command, and ~/.local/reatume config
+```
+
+Both require root. After install, `reatume` works from anywhere.
+
 ## GUI
 
 A small PySide6 window (native, cross-platform) wraps the CLI:
