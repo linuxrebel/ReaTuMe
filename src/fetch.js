@@ -5,7 +5,7 @@ async function fetchHtml(url, { timeout = 30000 } = {}) {
   const browser = await firefox.launch({ headless: true });
   try {
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: 'networkidle', timeout });
+    await page.goto(url, { waitUntil: 'load', timeout });
     return await page.content();
   } finally {
     await browser.close();
