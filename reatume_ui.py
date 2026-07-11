@@ -24,7 +24,7 @@ CLI = SCRIPT_DIR / "bin" / "reatume.js"
 SAMPLE_TEXT = "The quick brown fox reads this article aloud."
 
 # espeak defaults, written to config.json on first run.
-DEFAULTS = {"engine": "espeak", "voice": "en-us", "piperModel": "", "speed": 175, "wordGap": 0}
+DEFAULTS = {"engine": "piper", "voice": "en-us", "piperModel": "", "speed": 175, "wordGap": 0}
 
 
 def config_path() -> Path:
@@ -154,7 +154,7 @@ class ReaTuMe(QWidget):
         from PySide6.QtWidgets import QRadioButton, QButtonGroup
         engine_row = QHBoxLayout()
         self.rb_piper = QRadioButton("Piper (recommended)")
-        self.rb_espeak = QRadioButton("espeak")
+        self.rb_espeak = QRadioButton("espeak (robotic)")
         grp = QButtonGroup(self)
         grp.addButton(self.rb_piper)
         grp.addButton(self.rb_espeak)
@@ -230,7 +230,12 @@ class ReaTuMe(QWidget):
     def _reload_voices(self):
         self.voice.clear()
         if self.cfg["engine"] == "piper":
-            self.voice.addItems(list_piper_models())
+            models = list_piper_models()
+            self.voice.addItems(models)
+            # Ensure a usable model is selected so Piper is actually used, not
+            # silently fallen back to espeak because piperModel was blank.
+            if self.cfg["piperModel"] not in models:
+                self.cfg["piperModel"] = models[0] if models else ""
             if self.cfg["piperModel"]:
                 self._select_voice(self.cfg["piperModel"])
         else:
@@ -344,6 +349,8 @@ class ReaTuMe(QWidget):
         self.status.setText(f"Reading: {url}")
         args = [str(CLI), url, "-s", str(self.cfg["speed"]), "-e", self.cfg["engine"]]
         if self.cfg["engine"] == "piper":
+            if not self.cfg["piperModel"]:
+                self.status.setText("No Piper voice — using espeak. Click “Download voice…”.")
             args += ["-m", str(voices_dir() / f"{self.cfg['piperModel']}.onnx")]
         else:
             args += ["-v", self.cfg["voice"], "-g", str(self.cfg["wordGap"])]
