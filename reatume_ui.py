@@ -10,6 +10,7 @@ API). Config location is chosen per-OS via QStandardPaths.
 """
 import json
 import subprocess
+import urllib.request
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QProcess, QStandardPaths, QTimer
@@ -86,6 +87,45 @@ def list_voices() -> list[str]:
 
     voices += [f"en-us+{v}" for v in variants]
     return voices
+
+
+CURATED_PIPER = [
+    "en_US-amy-medium", "en_US-lessac-medium", "en_US-ryan-high",
+    "en_US-kristin-medium", "en_GB-alba-medium", "en_GB-cori-high",
+]
+VOICES_JSON = "https://huggingface.co/rhasspy/piper-voices/resolve/main/voices.json?download=true"
+
+
+def voices_dir() -> Path:
+    d = Path.home() / ".local" / "reatume" / "voices"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def list_piper_models() -> list[str]:
+    return sorted(p.stem for p in voices_dir().glob("*.onnx"))
+
+
+def download_piper_voice(name: str) -> bool:
+    r = subprocess.run(
+        ["python3", "-m", "piper.download_voices", name, "--download-dir", str(voices_dir())],
+        capture_output=True, text=True,
+    )
+    return r.returncode == 0
+
+
+def fetch_piper_catalog() -> dict:
+    """Return {language_name: [voice_key, ...]} from Piper's voices.json."""
+    with urllib.request.urlopen(VOICES_JSON, timeout=20) as resp:
+        data = json.load(resp)
+    langs: dict[str, list[str]] = {}
+    for key, meta in data.items():
+        lang = meta.get("language", {})
+        name = lang.get("name_native") or lang.get("name_english") or lang.get("code", "?")
+        langs.setdefault(name, []).append(key)
+    for v in langs.values():
+        v.sort()
+    return dict(sorted(langs.items()))
 
 
 class ReaTuMe(QWidget):
