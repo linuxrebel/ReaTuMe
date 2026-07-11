@@ -85,9 +85,11 @@ espeak-ng retained as an always-available fallback.
 
 ## New dependencies
 
-- **piper-tts** (`pip install piper-tts`) — user-installed; provides the `piper`
-  command. `onnxruntime` (its dependency) already present.
-- Piper voice model(s) — downloaded by the app into the voices dir.
+- **piper-tts** (`pip install piper-tts`) — installed (v1.4.2); provides the
+  `piper` command. `onnxruntime` (its dependency) already present. CLI flags
+  confirmed: `-m <model>`, `--output-raw`, `--length-scale`, stdin text input.
+- Piper voice model(s) — downloaded by the app via `piper.download_voices` into
+  the voices dir.
 - Audio player for live playback — Fedora has `pw-play`, `paplay`, `aplay`,
   `ffplay`. Use `aplay` for raw PCM (portable ALSA), pick first available.
 
@@ -148,12 +150,17 @@ voice is downloaded, then the app may switch the default to Piper.
 
 ## Downloader design
 
-- **Curated dialog:** hardcoded list of ~6 English voices with their HuggingFace
-  `resolve/main/...` URLs; Download fetches the `.onnx` + `.onnx.json` pair into
-  the voices dir (Python `urllib`, no new dep). Progress + error notice.
-- **"More languages…" modal:** on open, fetch `voices.json` catalog from
-  HuggingFace; language dropdown → voice dropdown → Download. Isolated: this is
-  the only path that touches the live catalog/network; the curated path never does.
+Lean on `piper.download_voices` (ships with piper-tts) — no hand-rolled URLs:
+
+- Downloads: shell `python3 -m piper.download_voices <name> --download-dir
+  <voices>`, which fetches the `.onnx` + `.onnx.json` pair. (piper module exposes
+  `download_voice()`, `list_voices()`, and a `VOICES_JSON` catalog-URL constant.)
+- **Curated dialog:** hardcoded list of ~6 English voice **names** (e.g.
+  `en_US-amy-medium`, `en_US-lessac-medium`, `en_US-ryan-high`); Download runs the
+  command above. Progress + error notice.
+- **"More languages…" modal:** fetch `VOICES_JSON` catalog once on open, parse
+  languages + voices; language dropdown → voice dropdown → Download (same command).
+  Isolated: the only path that touches the live catalog; curated never does.
 
 ## New/changed files
 
