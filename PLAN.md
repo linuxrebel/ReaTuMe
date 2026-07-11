@@ -58,7 +58,125 @@ None needed — Playwright + Firefox binary and `espeak-ng` all already installe
 
 ## Notes / future
 
-- Voice quality: espeak-ng is robotic but clear. Upgrade path: swap `speak.js`
-  to pipe into `piper` (neural TTS) if natural voice wanted later.
-- `turndown` npm dep no longer needed (was for markdown output) — can drop.
+- `turndown` npm dep no longer needed (was for markdown output) — dropped.
 - Auth/paywall pages: out of scope, fail cleanly.
+
+---
+
+# v0.2 — Piper neural TTS with espeak fallback
+
+## Goal
+
+espeak-ng is clear but robotic, hard to follow for long articles. Add **Piper**
+(neural, offline, CPU-fast) as a second engine, selectable in the GUI, with
+espeak-ng retained as an always-available fallback.
+
+## Decisions (from brainstorming)
+
+- **Engine model:** user-selectable via two radio buttons — **Piper
+  (recommended)** and **espeak**. If Piper is selected but its binary or the
+  chosen model is missing, auto-fall-back to espeak with a notice.
+- **Voice acquisition:** in-app downloader. A **curated** shortlist of ~6 good
+  English Piper voices, one click downloads a voice. A **"More languages…"**
+  button at the bottom opens a modal that fetches Piper's live catalog for any
+  language (e.g. Korean).
+- Downloaded voices live in `~/.local/reatume/voices/` as
+  `<name>.onnx` + `<name>.onnx.json` (Piper needs both).
+
+## New dependencies
+
+- **piper-tts** (`pip install piper-tts`) — user-installed; provides the `piper`
+  command. `onnxruntime` (its dependency) already present.
+- Piper voice model(s) — downloaded by the app into the voices dir.
+- Audio player for live playback — Fedora has `pw-play`, `paplay`, `aplay`,
+  `ffplay`. Use `aplay` for raw PCM (portable ALSA), pick first available.
+
+## Audio pipeline (speak.js)
+
+espeak plays its own audio; Piper does not — it emits samples, so we pipe them
+to a player.
+
+- **espeak branch (unchanged):** `spawn espeak-ng`, pipe text to stdin.
+- **Piper branch:** `spawn piper --model <voices>/<name>.onnx --output-raw`,
+  write article text to piper stdin; pipe piper stdout (raw 16-bit mono PCM) into
+  `aplay -t raw -f S16_LE -r <sample_rate> -c 1 -`. Sample rate is read from the
+  model's `.onnx.json` (`audio.sample_rate`). Streaming: Piper emits per
+  sentence, so audio starts within a second or two, not after full synthesis.
+
+Piper spawns **two** child processes (piper + player). The existing
+SIGTERM/SIGINT reaping (v0.1 Stop fix) is extended to kill **both** children, so
+Stop / window-close still leaves nothing orphaned.
+
+## Speed / word-gap mapping
+
+- Speed slider stays; interpretation is engine-aware:
+  - espeak: `-s <wpm>` (current).
+  - Piper: `--length-scale <s>`, mapped `length_scale = 175 / wpm` (higher wpm =
+    shorter = faster), clamped to a sane range (~0.5–2.0).
+- Word-gap slider is espeak-only; disabled (greyed) when Piper is selected.
+
+## Config schema (`~/.local/reatume/config.json`)
+
+```json
+{
+  "engine": "piper",          // "piper" | "espeak"
+  "voice": "en-us",            // espeak voice
+  "piperModel": "en_US-amy-medium",  // stem of the selected .onnx in voices dir
+  "speed": 175,
+  "wordGap": 0
+}
+```
+
+First-run defaults: `engine: "espeak"` (works with zero setup) until a Piper
+voice is downloaded, then the app may switch the default to Piper.
+
+## CLI (node) changes
+
+- `src/cli.js`: add `--engine <piper|espeak>` and `--model <path>` options.
+- `src/speak.js`: dispatch on engine; Piper pipeline as above; auto-fallback to
+  espeak (with stderr notice) if piper binary or model file is absent.
+
+## GUI (reatume_ui.py) changes
+
+- **Engine radios:** ( ) Piper (recommended)  ( ) espeak.
+- **Engine-aware voice panel:**
+  - Piper: dropdown of downloaded models (`*.onnx` in voices dir) +
+    **"Download voice…"** (curated dialog) + **"More languages…"** (catalog modal).
+  - espeak: existing voice dropdown (bases + variants).
+- Word-gap slider greyed when Piper selected.
+- Sample / Use / Go all route through the selected engine.
+
+## Downloader design
+
+- **Curated dialog:** hardcoded list of ~6 English voices with their HuggingFace
+  `resolve/main/...` URLs; Download fetches the `.onnx` + `.onnx.json` pair into
+  the voices dir (Python `urllib`, no new dep). Progress + error notice.
+- **"More languages…" modal:** on open, fetch `voices.json` catalog from
+  HuggingFace; language dropdown → voice dropdown → Download. Isolated: this is
+  the only path that touches the live catalog/network; the curated path never does.
+
+## New/changed files
+
+```
+src/cli.js          # + --engine, --model
+src/speak.js         # engine dispatch, Piper pipeline, reap both children
+reatume_ui.py         # engine radios, engine-aware voice panel, disable gap for piper
+  (voices logic)       # list local models, curated catalog, download, remote catalog fetch
+                       #   — kept in reatume_ui.py or a small voices.py helper
+```
+
+## Error handling
+
+- Piper binary missing → fallback to espeak + notice.
+- Selected model file missing → fallback to espeak + notice.
+- Download failure (network/404) → error dialog, voices dir left clean (no
+  half-written files).
+- Player missing → error pointing at install.
+- Stop/close kills piper + player (no orphans), same guarantee as v0.1.
+
+## Out of scope (YAGNI)
+
+- No GPU/onnxruntime-gpu path (CPU is fine for Piper).
+- No per-sentence highlighting / follow-along UI.
+- No voice deletion UI (delete files manually for now).
+- Windows/macOS player selection (Linux `aplay` now; revisit at packaging).
