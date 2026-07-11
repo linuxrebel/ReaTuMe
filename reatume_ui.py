@@ -172,10 +172,16 @@ class ReaTuMe(QWidget):
         sample_btn.clicked.connect(self.on_sample)
         use_btn = QPushButton("Use")
         use_btn.clicked.connect(self.on_use)
+        self.dl_btn = QPushButton("Download voice…")
+        self.dl_btn.clicked.connect(self.on_download_curated)
+        self.more_btn = QPushButton("More languages…")
+        self.more_btn.clicked.connect(self.on_more_languages)
         voice_row.addWidget(QLabel("Voice:"))
         voice_row.addWidget(self.voice, 1)
         voice_row.addWidget(sample_btn)
         voice_row.addWidget(use_btn)
+        voice_row.addWidget(self.dl_btn)
+        voice_row.addWidget(self.more_btn)
         outer.addLayout(voice_row)
 
         # 3) Speed slider + 4) Word-gap slider
@@ -206,13 +212,19 @@ class ReaTuMe(QWidget):
         # engine signal (now that self.voice and self.gap exist).
         self._reload_voices()
         self.gap.setEnabled(self.cfg["engine"] == "espeak")
+        self._update_piper_buttons()
         self.rb_piper.toggled.connect(self._on_engine)
 
     # --- helpers ---
+    def _update_piper_buttons(self):
+        for b in (self.dl_btn, self.more_btn):
+            b.setVisible(self.cfg["engine"] == "piper")
+
     def _on_engine(self, _checked=False):
         self.cfg["engine"] = "piper" if self.rb_piper.isChecked() else "espeak"
         self._reload_voices()
         self.gap.setEnabled(self.cfg["engine"] == "espeak")  # word-gap: espeak only
+        self._update_piper_buttons()
         self._save()
 
     def _reload_voices(self):
@@ -274,6 +286,47 @@ class ReaTuMe(QWidget):
                 "-g", str(self.cfg["wordGap"]),
                 SAMPLE_TEXT,
             ])
+
+    def _download_and_refresh(self, name):
+        from PySide6.QtWidgets import QMessageBox
+        self.status.setText(f"Downloading {name}…")
+        QApplication.processEvents()
+        ok = download_piper_voice(name)
+        if ok:
+            self._reload_voices()
+            self._select_voice(name)
+            self.status.setText(f"Downloaded {name}")
+        else:
+            QMessageBox.warning(self, "Download failed", f"Could not download {name}.")
+            self.status.setText("Download failed.")
+
+    def on_download_curated(self):
+        from PySide6.QtWidgets import QInputDialog
+        have = set(list_piper_models())
+        choices = [v for v in CURATED_PIPER if v not in have]
+        if not choices:
+            self.status.setText("All curated voices already downloaded.")
+            return
+        name, ok = QInputDialog.getItem(self, "Download voice", "Voice:", choices, 0, False)
+        if ok and name:
+            self._download_and_refresh(name)
+
+    def on_more_languages(self):
+        from PySide6.QtWidgets import QInputDialog, QMessageBox
+        self.status.setText("Fetching catalog…")
+        QApplication.processEvents()
+        try:
+            cat = fetch_piper_catalog()
+        except Exception as e:
+            QMessageBox.warning(self, "Catalog error", str(e))
+            self.status.setText("Catalog fetch failed.")
+            return
+        lang, ok = QInputDialog.getItem(self, "Language", "Language:", list(cat), 0, False)
+        if not (ok and lang):
+            return
+        name, ok = QInputDialog.getItem(self, "Voice", "Voice:", cat[lang], 0, False)
+        if ok and name:
+            self._download_and_refresh(name)
 
     def on_go(self):
         # Toggle: if reading, stop.
