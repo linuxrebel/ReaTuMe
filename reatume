@@ -22,7 +22,8 @@ reatume — navigate to a URL, extract the article, and read it aloud.
 
 USAGE:
   reatume <url> [options]
-  reatume                 (prompts for a URL, or type "help")
+  reatume                 (launches the GUI)
+  reatume --ui            (launches the GUI)
 
 ARGUMENTS:
   <url>                   Web page to read aloud.
@@ -30,6 +31,7 @@ ARGUMENTS:
 OPTIONS:
   -s, --speed <wpm>       Speech rate in words per minute (default: 175).
   -v, --voice <name>      espeak-ng voice, e.g. en-us, en-gb (default: system).
+  -g, --gap <n>           Word gap in 10ms units (default: 0).
   -o, --out <file>        Also save the spoken audio to a WAV file.
       --timeout <ms>      Page load timeout in milliseconds (default: 30000).
   -h, --help              Show this help and exit.
@@ -50,22 +52,9 @@ EXIT CODES:
 EOF
 }
 
-# No arguments: prompt for a URL (or the word "help").
+# No arguments: launch the GUI.
 if [ "$#" -eq 0 ]; then
-  read -r -p "Enter a URL to read (or type 'help'): " input
-  case "$input" in
-    "")
-      echo "No URL given. Nothing to do." >&2
-      exit 1
-      ;;
-    help|--help|-h)
-      show_help
-      exit 0
-      ;;
-    *)
-      set -- "$input"
-      ;;
-  esac
+  exec python3 "$SCRIPT_DIR/reatume_ui.py"
 fi
 
 # Explicit help request.
@@ -73,6 +62,9 @@ case "${1:-}" in
   -h|--help|help)
     show_help
     exit 0
+    ;;
+  --ui)
+    exec python3 "$SCRIPT_DIR/reatume_ui.py"
     ;;
 esac
 

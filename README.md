@@ -62,16 +62,37 @@ npm install
 npx playwright install firefox   # one-time, ~105 MB
 ```
 
-## Usage
+## GUI
+
+A small PySide6 window (native, cross-platform) wraps the CLI:
+
+```
+./reatume          # no arguments -> launches the GUI
+./reatume --ui
+```
+
+- URL field + **Go** (Go toggles to **Stop** while reading)
+- Voice dropdown (English voices + espeak variants) with **Sample** (hear it) and
+  **Use** (set it)
+- **Speed** and **Word gap** sliders
+
+Settings (voice, speed, word gap) are saved to `~/.local/reatume/config.json`
+(created with espeak defaults on first run) and restored on next launch.
+
+Requires `python3-pyside6` (Fedora: `dnf install python3-pyside6`).
+
+## Usage (CLI)
 
 ```
 node bin/reatume.js <url> [options]
+./reatume <url> [options]
 ```
 
 | Option              | Description                                  | Default |
 |---------------------|----------------------------------------------|---------|
 | `-s, --speed <wpm>` | speech rate, words per minute                | 175     |
 | `-v, --voice <name>`| espeak-ng voice (e.g. `en-us`, `en-gb`)      | default |
+| `-g, --gap <n>`     | word gap in 10ms units                       | 0       |
 | `-o, --out <file>`  | also save spoken audio to a WAV file         | —       |
 | `--timeout <ms>`    | page load timeout                            | 30000   |
 

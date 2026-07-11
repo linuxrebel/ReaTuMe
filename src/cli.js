@@ -10,6 +10,7 @@ async function run() {
     .argument('<url>', 'page URL to read')
     .option('-s, --speed <wpm>', 'words per minute', (v) => parseInt(v, 10))
     .option('-v, --voice <name>', 'espeak-ng voice (e.g. en-us)')
+    .option('-g, --gap <n>', 'word gap in 10ms units', (v) => parseInt(v, 10))
     .option('-o, --out <file>', 'also save spoken audio to a WAV file')
     .option('--timeout <ms>', 'page load timeout in ms', (v) => parseInt(v, 10), 30000)
     .parse();
@@ -26,7 +27,7 @@ async function run() {
   }
   if (title) process.stderr.write(`Reading: ${title}\n`);
 
-  await speak(text, { speed: opts.speed, voice: opts.voice, outFile: opts.out });
+  await speak(text, { speed: opts.speed, voice: opts.voice, gap: opts.gap, outFile: opts.out });
 }
 
 module.exports = { run };

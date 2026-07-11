@@ -2,10 +2,11 @@ const { spawn } = require('child_process');
 
 // Speak text aloud via espeak-ng. Optionally also save WAV to outFile.
 // Resolves when playback finishes.
-function speak(text, { speed, voice, outFile } = {}) {
+function speak(text, { speed, voice, gap, outFile } = {}) {
   const args = [];
   if (speed) args.push('-s', String(speed));
   if (voice) args.push('-v', voice);
+  if (gap != null) args.push('-g', String(gap));
   if (outFile) args.push('-w', outFile);
 
   return new Promise((resolve, reject) => {
