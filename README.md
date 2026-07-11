@@ -93,6 +93,24 @@ Settings (voice, speed, word gap) are saved to `~/.local/reatume/config.json`
 
 Requires `python3-pyside6` (Fedora: `dnf install python3-pyside6`).
 
+## Voice engines
+
+Two engines, chosen by radio buttons in the GUI (or `--engine` on the CLI):
+
+- **espeak** — robotic but zero-setup, always available (default).
+- **Piper** — neural, natural, offline. Requires `pip install piper-tts` and at
+  least one downloaded voice.
+
+Download Piper voices in the GUI: select **Piper**, click **Download voice…**
+(curated English list) or **More languages…** (full catalog, any language).
+Voices are stored in `~/.local/reatume/voices/`.
+
+CLI with Piper:
+
+```
+node bin/reatume.js <url> --engine piper --model ~/.local/reatume/voices/en_US-amy-medium.onnx
+```
+
 ## Usage (CLI)
 
 ```
