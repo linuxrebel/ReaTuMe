@@ -150,11 +150,24 @@ class ReaTuMe(QWidget):
         url_row.addWidget(self.go_btn)
         outer.addLayout(url_row)
 
-        # 2) Voice dropdown + Sample + Use
+        # Engine radios (signal connected last, after all widgets exist).
+        from PySide6.QtWidgets import QRadioButton, QButtonGroup
+        engine_row = QHBoxLayout()
+        self.rb_piper = QRadioButton("Piper (recommended)")
+        self.rb_espeak = QRadioButton("espeak")
+        grp = QButtonGroup(self)
+        grp.addButton(self.rb_piper)
+        grp.addButton(self.rb_espeak)
+        (self.rb_piper if self.cfg["engine"] == "piper" else self.rb_espeak).setChecked(True)
+        engine_row.addWidget(QLabel("Engine:"))
+        engine_row.addWidget(self.rb_piper)
+        engine_row.addWidget(self.rb_espeak)
+        engine_row.addStretch()
+        outer.addLayout(engine_row)
+
+        # 2) Voice dropdown + Sample + Use (populated by _reload_voices below)
         voice_row = QHBoxLayout()
         self.voice = QComboBox()
-        self.voice.addItems(list_voices())
-        self._select_voice(self.cfg["voice"])
         sample_btn = QPushButton("Sample")
         sample_btn.clicked.connect(self.on_sample)
         use_btn = QPushButton("Use")
@@ -189,7 +202,29 @@ class ReaTuMe(QWidget):
         self.status = QLabel(f"Voice: {self.cfg['voice']}")
         outer.addWidget(self.status)
 
+        # Populate voices for the current engine, set gap state, then connect the
+        # engine signal (now that self.voice and self.gap exist).
+        self._reload_voices()
+        self.gap.setEnabled(self.cfg["engine"] == "espeak")
+        self.rb_piper.toggled.connect(self._on_engine)
+
     # --- helpers ---
+    def _on_engine(self, _checked=False):
+        self.cfg["engine"] = "piper" if self.rb_piper.isChecked() else "espeak"
+        self._reload_voices()
+        self.gap.setEnabled(self.cfg["engine"] == "espeak")  # word-gap: espeak only
+        self._save()
+
+    def _reload_voices(self):
+        self.voice.clear()
+        if self.cfg["engine"] == "piper":
+            self.voice.addItems(list_piper_models())
+            if self.cfg["piperModel"]:
+                self._select_voice(self.cfg["piperModel"])
+        else:
+            self.voice.addItems(list_voices())
+            self._select_voice(self.cfg["voice"])
+
     def _select_voice(self, name: str):
         i = self.voice.findText(name)
         if i < 0:
@@ -211,19 +246,34 @@ class ReaTuMe(QWidget):
 
     # --- actions ---
     def on_use(self):
-        self.cfg["voice"] = self.voice.currentText()
+        if self.cfg["engine"] == "piper":
+            self.cfg["piperModel"] = self.voice.currentText()
+        else:
+            self.cfg["voice"] = self.voice.currentText()
         self._save()
-        self.status.setText(f"Voice set: {self.cfg['voice']}")
+        self.status.setText(f"Voice set: {self.voice.currentText()}")
 
     def on_sample(self):
         """Play a short sample in the currently highlighted voice + settings."""
-        subprocess.Popen([
-            "espeak-ng",
-            "-v", self.voice.currentText(),
-            "-s", str(self.cfg["speed"]),
-            "-g", str(self.cfg["wordGap"]),
-            SAMPLE_TEXT,
-        ])
+        if self.cfg["engine"] == "piper":
+            model = voices_dir() / f"{self.voice.currentText()}.onnx"
+            if not model.exists():
+                self.status.setText("Download this voice first.")
+                return
+            p = subprocess.Popen(["piper", "-m", str(model), "--output-raw"],
+                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            subprocess.Popen(["aplay", "-t", "raw", "-f", "S16_LE", "-r", "22050", "-c", "1", "-"],
+                             stdin=p.stdout)
+            p.stdin.write(SAMPLE_TEXT.encode())
+            p.stdin.close()
+        else:
+            subprocess.Popen([
+                "espeak-ng",
+                "-v", self.voice.currentText(),
+                "-s", str(self.cfg["speed"]),
+                "-g", str(self.cfg["wordGap"]),
+                SAMPLE_TEXT,
+            ])
 
     def on_go(self):
         # Toggle: if reading, stop.
@@ -239,12 +289,12 @@ class ReaTuMe(QWidget):
         self.reader.finished.connect(self._reader_done)
         self.go_btn.setText("Stop")
         self.status.setText(f"Reading: {url}")
-        self.reader.start("node", [
-            str(CLI), url,
-            "-v", self.cfg["voice"],
-            "-s", str(self.cfg["speed"]),
-            "-g", str(self.cfg["wordGap"]),
-        ])
+        args = [str(CLI), url, "-s", str(self.cfg["speed"]), "-e", self.cfg["engine"]]
+        if self.cfg["engine"] == "piper":
+            args += ["-m", str(voices_dir() / f"{self.cfg['piperModel']}.onnx")]
+        else:
+            args += ["-v", self.cfg["voice"], "-g", str(self.cfg["wordGap"])]
+        self.reader.start("node", args)
 
     def _stop_reader(self):
         """SIGTERM the node reader; it reaps its espeak child. Hard-kill if it
