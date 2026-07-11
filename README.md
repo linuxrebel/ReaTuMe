@@ -16,7 +16,7 @@ against the rendered DOM to get clean article text, and pipes that text to
    │
    ▼
 ┌──────────────┐   rendered HTML   ┌──────────────┐   clean text   ┌──────────────┐
-│  fetch.js    │ ────────────────▶ │  extract.js  │ ─────────────▶ │  speak.js    │
+│  fetch.js    │ ───────────────▶ │  extract.js  │ ────────────▶ │  speak.js    │
 │  Playwright  │                   │  jsdom +     │                │  espeak-ng   │
 │  headless FF │                   │  Readability │                │  (aloud)     │
 └──────────────┘                   └──────────────┘                └──────┬───────┘
