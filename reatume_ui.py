@@ -12,7 +12,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QProcess, QStandardPaths
+from PySide6.QtCore import Qt, QProcess, QStandardPaths, QTimer
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLineEdit, QPushButton, QComboBox, QSlider,
     QLabel, QHBoxLayout, QVBoxLayout, QFormLayout,
@@ -188,7 +188,7 @@ class ReaTuMe(QWidget):
     def on_go(self):
         # Toggle: if reading, stop.
         if self.reader is not None:
-            self.reader.kill()
+            self._stop_reader()
             return
         url = self.url.text().strip()
         if not url:
@@ -206,10 +206,25 @@ class ReaTuMe(QWidget):
             "-g", str(self.cfg["wordGap"]),
         ])
 
+    def _stop_reader(self):
+        """SIGTERM the node reader; it reaps its espeak child. Hard-kill if it
+        somehow ignores the signal (should not happen)."""
+        r = self.reader
+        if r is None:
+            return
+        self.status.setText("Stopping...")
+        r.terminate()  # SIGTERM — node's handler kills espeak
+        QTimer.singleShot(2000, lambda: r.kill() if r.state() != QProcess.ProcessState.NotRunning else None)
+
     def _reader_done(self):
         self.reader = None
         self.go_btn.setText("Go")
         self.status.setText("Done.")
+
+    def closeEvent(self, event):
+        # Don't leave a reader (and its espeak child) running after the window closes.
+        self._stop_reader()
+        super().closeEvent(event)
 
 
 def main():
