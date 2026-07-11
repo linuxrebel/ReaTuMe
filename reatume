@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+#
+# reatume — read a web article aloud
+# Wrapper around bin/reatume.js (Playwright + Readability + espeak-ng).
+
+set -euo pipefail
+
+# Resolve this script's directory so bin/reatume.js is found no matter where
+# the script is called from (or symlinked to).
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+CLI="$SCRIPT_DIR/bin/reatume.js"
+
+show_help() {
+  cat <<'EOF'
+reatume — navigate to a URL, extract the article, and read it aloud.
+
+USAGE:
+  reatume <url> [options]
+  reatume                 (prompts for a URL, or type "help")
+
+ARGUMENTS:
+  <url>                   Web page to read aloud.
+
+OPTIONS:
+  -s, --speed <wpm>       Speech rate in words per minute (default: 175).
+  -v, --voice <name>      espeak-ng voice, e.g. en-us, en-gb (default: system).
+  -o, --out <file>        Also save the spoken audio to a WAV file.
+      --timeout <ms>      Page load timeout in milliseconds (default: 30000).
+  -h, --help              Show this help and exit.
+
+EXAMPLES:
+  reatume https://en.wikipedia.org/wiki/Coffee
+  reatume https://example.com/post -s 220 -v en-gb
+  reatume https://example.com/post -o article.wav
+
+NOTES:
+  - Needs a sound device to hear playback; on a headless box use -o to save WAV.
+  - List voices: espeak-ng --voices
+  - Robotic voice is espeak-ng; swap speak.js to piper for neural TTS.
+
+EXIT CODES:
+  0  success
+  1  load failure, no readable text, or espeak-ng missing
+EOF
+}
+
+# No arguments: prompt for a URL (or the word "help").
+if [ "$#" -eq 0 ]; then
+  read -r -p "Enter a URL to read (or type 'help'): " input
+  case "$input" in
+    "")
+      echo "No URL given. Nothing to do." >&2
+      exit 1
+      ;;
+    help|--help|-h)
+      show_help
+      exit 0
+      ;;
+    *)
+      set -- "$input"
+      ;;
+  esac
+fi
+
+# Explicit help request.
+case "${1:-}" in
+  -h|--help|help)
+    show_help
+    exit 0
+    ;;
+esac
+
+exec node "$CLI" "$@"
