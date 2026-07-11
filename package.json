@@ -1,0 +1,17 @@
+{
+  "name": "reatume",
+  "version": "0.1.0",
+  "description": "CLI reader-view tool: navigate to a URL and read clean article text",
+  "bin": {
+    "reatume": "bin/reatume.js"
+  },
+  "type": "commonjs",
+  "license": "MIT",
+  "dependencies": {
+    "@mozilla/readability": "^0.6.0",
+    "commander": "^15.0.0",
+    "jsdom": "^29.1.1",
+    "playwright": "^1.61.1",
+    "turndown": "^7.2.4"
+  }
+}
