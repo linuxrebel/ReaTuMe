@@ -60,6 +60,13 @@ None needed — Playwright + Firefox binary and `espeak-ng` all already installe
 
 - `turndown` npm dep no longer needed (was for markdown output) — dropped.
 - Auth/paywall pages: out of scope, fail cleanly.
+- **Browser engine — revisit later.** We use Playwright's Firefox (thematic:
+  the idea began with Firefox Reader View, though we use the Readability lib,
+  not Firefox's UI). Playwright also supports Chromium and WebKit; any works for
+  render→HTML→Readability. This will surface for users at install time
+  (`npx playwright install firefox`). Consider switching to/offering Chromium if
+  Firefox proves worse on real-world sites or the ~100MB Firefox download is a
+  friction point. `src/fetch.js` is the single switch point.
 
 ---
 
