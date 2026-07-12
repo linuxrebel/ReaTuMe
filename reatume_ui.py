@@ -9,6 +9,8 @@ Portable: to move to PyQt6, change the three PySide6 imports to PyQt6 (identical
 API). Config location is chosen per-OS via QStandardPaths.
 """
 import json
+import logging
+import os
 import subprocess
 import urllib.request
 from pathlib import Path
@@ -101,6 +103,26 @@ def voices_dir() -> Path:
     d = root / "reatume"
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+logger = logging.getLogger("reatume")
+
+
+def log_path() -> Path:
+    """Per-user log (XDG state dir). Not /var/log — this is a user app; the
+    system journal isn't ours to write."""
+    base = os.environ.get("XDG_STATE_HOME") or str(Path.home() / ".local" / "state")
+    d = Path(base) / "reatume"
+    d.mkdir(parents=True, exist_ok=True)
+    return d / "reatume.log"
+
+
+def setup_logging() -> None:
+    handler = logging.FileHandler(log_path())
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    logger.addHandler(handler)
+    # ERROR by default; REATUME_DEBUG=1 for verbose diagnosis.
+    logger.setLevel(logging.DEBUG if os.environ.get("REATUME_DEBUG") else logging.ERROR)
 
 
 def list_piper_models() -> list[str]:
@@ -336,6 +358,7 @@ class ReaTuMe(QWidget):
         else:
             QMessageBox.warning(self, "Download failed", f"Could not download {name}.")
             self.status.setText("Download failed.")
+            logger.error("voice download failed: %s", name)
 
     def on_download_curated(self):
         from PySide6.QtWidgets import QInputDialog
@@ -357,6 +380,7 @@ class ReaTuMe(QWidget):
         except Exception as e:
             QMessageBox.warning(self, "Catalog error", str(e))
             self.status.setText("Catalog fetch failed.")
+            logger.error("catalog fetch failed: %s", e)
             return
         lang, ok = QInputDialog.getItem(self, "Language", "Language:", list(cat), 0, False)
         if not (ok and lang):
@@ -392,6 +416,7 @@ class ReaTuMe(QWidget):
         else:
             args += ["-v", self.cfg["voice"], "-g", str(self.cfg["wordGap"])]
         self.reader.start("node", args)
+        logger.debug("reader started: node %s", " ".join(args))
 
     # --- loading indicator ---
     def _show_loading(self):
@@ -426,6 +451,7 @@ class ReaTuMe(QWidget):
             self.reader = None
             self.go_btn.setText("Go")
             self.status.setText("Could not start 'node'. Is Node.js installed and on PATH?")
+            logger.error("reader failed to start: 'node' not found on PATH")
 
     def _stop_reader(self):
         """SIGTERM the node reader; it reaps its espeak child. Hard-kill if it
@@ -452,6 +478,8 @@ class ReaTuMe(QWidget):
             if line.startswith("Error:") or "No readable" in line:
                 reason = line
         self.status.setText(reason or "Nothing to read — page may be empty or blocking headless access.")
+        logger.error("read produced no audio (exit=%s). reason=%r\nreader stderr:\n%s",
+                     code, reason, self._reader_err.strip())
 
     def closeEvent(self, event):
         # Don't leave a reader (and its espeak child) running after the window closes.
@@ -470,6 +498,7 @@ def app_icon() -> QIcon:
 
 
 def main():
+    setup_logging()
     app = QApplication([])
     app.setApplicationName("ReaTuMe")
     # Associate our windows with reatume.desktop so the taskbar uses its icon
