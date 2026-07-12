@@ -1,7 +1,7 @@
 {
   "name": "reatume",
-  "version": "0.1.0",
-  "description": "CLI reader-view tool: navigate to a URL and read clean article text",
+  "version": "0.5.0",
+  "description": "Navigate to a URL, extract the article, and read it aloud (espeak or Piper)",
   "bin": {
     "reatume": "bin/reatume.js"
   },
