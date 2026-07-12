@@ -118,13 +118,16 @@ A small PySide6 window (native, cross-platform) wraps the CLI:
 ./reatume --ui
 ```
 
-- URL field + **Go** (Go toggles to **Stop** while reading)
-- Voice dropdown (English voices + espeak variants) with **Sample** (hear it) and
-  **Use** (set it)
-- **Speed** and **Word gap** sliders
+- URL field + **Go** (toggles to **Stop** while reading; a *Loading…* dialog
+  shows during fetch)
+- **Engine** radios: **Piper (recommended)** / **espeak (robotic)**
+- Voice dropdown (Piper models, or espeak voices + variants) with **Sample**
+  (hear it), **Use** (set it), **Get Voice** / **More Lang.** (Piper downloads)
+- **Speed** and **Word gap** sliders (word gap is espeak-only)
 
-Settings (voice, speed, word gap) are saved to `~/.config/reatume/config.json`
-(created with espeak defaults on first run) and restored on next launch.
+Settings (engine, voice, speed, word gap) are saved to
+`~/.config/reatume/config.json` and restored on next launch. On first run with
+Piper and no voice, the default (amy-medium) is downloaded automatically.
 
 Requires `python3-pyside6` (Fedora: `dnf install python3-pyside6`).
 
@@ -183,8 +186,12 @@ List available voices: `espeak-ng --voices`
   article; ReaTuMe falls back to the raw `<body>` text.
 - **Error pages** are read verbatim — a 404 page is spoken as-is (no HTTP-status
   check).
-- **Voice quality**: espeak-ng is clear but robotic. To upgrade, swap `speak.js`
-  to pipe into `piper` (neural TTS).
+- **Voice quality**: espeak-ng is clear but robotic. For a natural voice, pick
+  **Piper** in the GUI (see *Voice engines* above).
+- **Logging**: the GUI writes errors to `~/.local/state/reatume/reatume.log`
+  (read failures, missing `node`, download/catalog errors). Set
+  `REATUME_DEBUG=1` for verbose logging. A read that produces no audio reports
+  the reason on screen and in this log.
 
 ## Exit codes
 

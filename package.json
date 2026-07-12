@@ -1,6 +1,6 @@
 {
   "name": "reatume",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Navigate to a URL, extract the article, and read it aloud (espeak or Piper)",
   "bin": {
     "reatume": "bin/reatume.js"
