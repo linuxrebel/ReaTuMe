@@ -61,6 +61,7 @@ Icon=reatume
 Terminal=false
 Categories=Network;
 Keywords=tts;reader;speech;article;
+StartupWMClass=reatume
 DESKTOP_EOF
 chmod 644 "$DESKTOP"
 

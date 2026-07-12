@@ -14,6 +14,7 @@ import urllib.request
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QProcess, QStandardPaths, QTimer
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLineEdit, QPushButton, QComboBox, QSlider,
     QLabel, QHBoxLayout, QVBoxLayout, QFormLayout,
@@ -406,9 +407,26 @@ class ReaTuMe(QWidget):
         super().closeEvent(event)
 
 
+def app_icon() -> QIcon:
+    # Prefer the installed hicolor theme icon; fall back to the repo copy (dev).
+    icon = QIcon.fromTheme("reatume")
+    if icon.isNull():
+        local = SCRIPT_DIR / "assets" / "reatume.svg"
+        if local.exists():
+            icon = QIcon(str(local))
+    return icon
+
+
 def main():
     app = QApplication([])
+    app.setApplicationName("ReaTuMe")
+    # Associate our windows with reatume.desktop so the taskbar uses its icon
+    # (Wayland app_id / KDE) instead of a generic fallback.
+    app.setDesktopFileName("reatume")
+    icon = app_icon()
+    app.setWindowIcon(icon)  # X11 _NET_WM_ICON for the taskbar
     win = ReaTuMe()
+    win.setWindowIcon(icon)
     win.resize(560, 200)
     win.show()
     app.exec()
