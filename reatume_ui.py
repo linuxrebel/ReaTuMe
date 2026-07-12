@@ -29,15 +29,11 @@ DEFAULTS = {"engine": "piper", "voice": "en-us", "piperModel": "", "speed": 175,
 
 
 def config_path() -> Path:
-    """Per-OS config file. Linux: ~/.local/reatume/config.json (as specified);
-    Windows/macOS: the platform AppConfig dir via QStandardPaths."""
-    home = Path.home()
-    linux_path = home / ".local" / "reatume" / "config.json"
-    base = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppConfigLocation)
-    # On Linux AppConfigLocation is ~/.config/...; honor the requested ~/.local path there.
-    if base.startswith(str(home / ".config")):
-        return linux_path
-    return Path(base) / "reatume" / "config.json"
+    """Config file. Linux: ~/.config/reatume/config.json; per-OS elsewhere
+    (GenericConfigLocation = ~/.config, %APPDATA%, ~/Library/Preferences)."""
+    base = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.GenericConfigLocation)
+    root = Path(base) if base else Path.home() / ".config"
+    return root / "reatume" / "config.json"
 
 
 def load_config() -> dict:
@@ -98,7 +94,11 @@ VOICES_JSON = "https://huggingface.co/rhasspy/piper-voices/resolve/main/voices.j
 
 
 def voices_dir() -> Path:
-    d = Path.home() / ".local" / "reatume" / "voices"
+    """Piper voice models. Linux: ~/.local/share/reatume; per-OS elsewhere
+    (GenericDataLocation = ~/.local/share, %APPDATA%, ~/Library/Application Support)."""
+    base = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.GenericDataLocation)
+    root = Path(base) if base else Path.home() / ".local" / "share"
+    d = root / "reatume"
     d.mkdir(parents=True, exist_ok=True)
     return d
 

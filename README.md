@@ -69,7 +69,7 @@ Installs the app to `/opt/reatume` and the `reatume` command to
 
 ```
 sudo ./install.sh      # install or update (re-run to update)
-sudo ./uninstall.sh    # remove app, command, and ~/.local/reatume config
+sudo ./uninstall.sh    # remove app, command, config, and voices
 ```
 
 Both require root. After install, `reatume` works from anywhere, and ReaTuMe
@@ -123,7 +123,7 @@ A small PySide6 window (native, cross-platform) wraps the CLI:
   **Use** (set it)
 - **Speed** and **Word gap** sliders
 
-Settings (voice, speed, word gap) are saved to `~/.local/reatume/config.json`
+Settings (voice, speed, word gap) are saved to `~/.config/reatume/config.json`
 (created with espeak defaults on first run) and restored on next launch.
 
 Requires `python3-pyside6` (Fedora: `dnf install python3-pyside6`).
@@ -136,14 +136,15 @@ Two engines, chosen by radio buttons in the GUI (or `--engine` on the CLI):
 - **Piper** — neural, natural, offline. Requires `pip install piper-tts` and at
   least one downloaded voice.
 
-Download Piper voices in the GUI: select **Piper**, click **Download voice…**
-(curated English list) or **More languages…** (full catalog, any language).
-Voices are stored in `~/.local/reatume/voices/`.
+Download Piper voices in the GUI: select **Piper**, click **Get Voice**
+(curated English list) or **More Lang.** (full catalog, any language). The
+default voice (amy-medium) is fetched automatically on first run.
+Voices are stored in `~/.local/share/reatume/`.
 
 CLI with Piper:
 
 ```
-node bin/reatume.js <url> --engine piper --model ~/.local/reatume/voices/en_US-amy-medium.onnx
+node bin/reatume.js <url> --engine piper --model ~/.local/share/reatume/en_US-amy-medium.onnx
 ```
 
 ## Usage (CLI)

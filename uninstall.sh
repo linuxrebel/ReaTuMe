@@ -27,17 +27,18 @@ rm -f "$ICON" "$DESKTOP"
 gtk-update-icon-cache -q -t /usr/share/icons/hicolor 2>/dev/null || true
 update-desktop-database /usr/share/applications 2>/dev/null || true
 
-# Config lives in the invoking user's home, not root's. Resolve via SUDO_USER.
+# Config + voices live in the invoking user's home, not root's. Resolve via SUDO_USER.
 if [ -n "${SUDO_USER:-}" ]; then
   USER_HOME="$(getent passwd "$SUDO_USER" | cut -d: -f6)"
 else
   USER_HOME="$HOME"
 fi
-CONFIG_DIR="$USER_HOME/.local/reatume"
 
-if [ -d "$CONFIG_DIR" ]; then
-  echo "Removing config $CONFIG_DIR"
-  rm -rf "$CONFIG_DIR"
-fi
+for d in "$USER_HOME/.config/reatume" "$USER_HOME/.local/share/reatume"; do
+  if [ -d "$d" ]; then
+    echo "Removing $d"
+    rm -rf "$d"
+  fi
+done
 
 echo "Done. ReaTuMe removed."
