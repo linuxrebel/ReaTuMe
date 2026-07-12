@@ -59,7 +59,7 @@ Comment=Read a web page aloud
 Exec=$BIN
 Icon=reatume
 Terminal=false
-Categories=Utility;AudioVideo;Accessibility;
+Categories=Network;
 Keywords=tts;reader;speech;article;
 DESKTOP_EOF
 chmod 644 "$DESKTOP"
