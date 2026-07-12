@@ -75,4 +75,7 @@ case "${1:-}" in
     ;;
 esac
 
-exec node "$CLI" "$@"
+# Launch the read detached so the terminal returns immediately (fire-and-forget).
+# Output is dropped; use the GUI if you want status or a Stop button.
+setsid node "$CLI" "$@" >/dev/null 2>&1 < /dev/null &
+exit 0
