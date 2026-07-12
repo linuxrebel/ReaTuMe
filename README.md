@@ -196,3 +196,11 @@ List available voices: `espeak-ng --voices`
 ## Exit codes
 
 `0` success · `1` load failure, no readable text, or `espeak-ng` missing.
+
+## Mobile (planned)
+
+A Flutter app (iOS + Android) is designed but not yet built — it replaces the
+desktop's headless Firefox, Node, and piper/espeak with the phone's native
+WebView, Readability.js, and OS text-to-speech. See
+[docs/mobile/ARCHITECTURE.md](docs/mobile/ARCHITECTURE.md) and
+[docs/mobile/IMPLEMENTATION-PLAN.md](docs/mobile/IMPLEMENTATION-PLAN.md).
