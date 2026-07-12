@@ -90,8 +90,8 @@ def list_voices() -> list[str]:
 
 
 CURATED_PIPER = [
-    "en_US-amy-medium", "en_US-lessac-medium", "en_US-ryan-high",
-    "en_US-kristin-medium", "en_GB-alba-medium", "en_GB-cori-high",
+    "en_US-amy-medium", "en_US-lessac-medium", "en_US-kristin-medium",
+    "en_GB-alba-medium", "en_GB-cori-high", "en_GB-northern_english_male-medium",
 ]
 VOICES_JSON = "https://huggingface.co/rhasspy/piper-voices/resolve/main/voices.json?download=true"
 
