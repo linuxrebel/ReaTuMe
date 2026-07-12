@@ -76,6 +76,39 @@ Both require root. After install, `reatume` works from anywhere, and ReaTuMe
 appears in your application menu (icon + `.desktop` entry installed to the
 hicolor theme and `/usr/share/applications`).
 
+## Building Linux packages (RPM / DEB / tarball)
+
+`packaging/build_packages.sh` builds all three from the current tree using the
+native tools (`rpmbuild`, `dpkg-deb`, `tar` — no `fpm`). Run `npm install` first
+so `node_modules` is bundled:
+
+```
+npm install
+./packaging/build_packages.sh          # -> dist/*.rpm, *.deb, *.tar.gz
+./packaging/build_packages.sh 2        # release build number 2
+```
+
+Install the result:
+
+```
+sudo dnf install ./dist/reatume-<ver>-1.noarch.rpm     # Fedora/RHEL
+sudo apt install ./dist/reatume_<ver>-1_all.deb        # Debian/Ubuntu
+# or the portable tarball:
+tar xzf dist/reatume-<ver>-1.tar.gz && cd reatume-<ver>-1 && sudo ./install.sh
+```
+
+Packages install to `/opt/reatume` with `/usr/bin/reatume`, the icon, and the
+menu entry. They **depend on** `nodejs`, `espeak-ng`, `python3-pyside6`,
+`alsa-utils` (resolved automatically). They do **not** pull in Piper or the
+Playwright Firefox browser — after installing, add those for the neural voice:
+
+```
+pip install --user piper-tts
+cd /opt/reatume && npx playwright install firefox
+```
+
+espeak works immediately without either.
+
 ## GUI
 
 A small PySide6 window (native, cross-platform) wraps the CLI:

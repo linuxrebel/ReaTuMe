@@ -2,3 +2,4 @@ node_modules/
 *.wav
 __pycache__/
 .claude/
+dist/
