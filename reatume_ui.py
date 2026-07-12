@@ -136,7 +136,10 @@ class ReaTuMe(QWidget):
         self.cfg = load_config()
         self.reader = None  # QProcess for the Go/read action
         self._loading = None  # transient "Loading…" dialog during fetch+extract
+        self._dl = None  # QProcess for a background voice download
         self._build()
+        # First run with Piper but no voice: grab amy-medium so it works now.
+        QTimer.singleShot(0, self._ensure_default_voice)
 
     def _build(self):
         outer = QVBoxLayout(self)
@@ -170,13 +173,17 @@ class ReaTuMe(QWidget):
         # 2) Voice dropdown + Sample + Use (populated by _reload_voices below)
         voice_row = QHBoxLayout()
         self.voice = QComboBox()
+        # Give the combo real room so voice names are readable; let it grow
+        # while the buttons stay at their text size.
+        self.voice.setMinimumWidth(200)
+        self.voice.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
         sample_btn = QPushButton("Sample")
         sample_btn.clicked.connect(self.on_sample)
         use_btn = QPushButton("Use")
         use_btn.clicked.connect(self.on_use)
-        self.dl_btn = QPushButton("Download voice…")
+        self.dl_btn = QPushButton("Get Voice")
         self.dl_btn.clicked.connect(self.on_download_curated)
-        self.more_btn = QPushButton("More languages…")
+        self.more_btn = QPushButton("More Lang.")
         self.more_btn.clicked.connect(self.on_more_languages)
         voice_row.addWidget(QLabel("Voice:"))
         voice_row.addWidget(self.voice, 1)
@@ -228,6 +235,27 @@ class ReaTuMe(QWidget):
         self.gap.setEnabled(self.cfg["engine"] == "espeak")  # word-gap: espeak only
         self._update_piper_buttons()
         self._save()
+
+    def _ensure_default_voice(self):
+        if self.cfg["engine"] != "piper" or list_piper_models():
+            return
+        self.status.setText("Downloading default voice (amy-medium)…")
+        self._dl = QProcess(self)
+        self._dl.finished.connect(self._default_voice_done)
+        self._dl.start("python3", ["-m", "piper.download_voices",
+                                   "en_US-amy-medium", "--download-dir", str(voices_dir())])
+
+    def _default_voice_done(self, *args):
+        models = list_piper_models()
+        if models:
+            self.cfg["piperModel"] = "en_US-amy-medium" if "en_US-amy-medium" in models else models[0]
+            self._reload_voices()
+            self._select_voice(self.cfg["piperModel"])
+            self._save()
+            self.status.setText(f"Default voice ready: {self.cfg['piperModel']}")
+        else:
+            self.status.setText("Default voice download failed — click Get Voice.")
+        self._dl = None
 
     def _reload_voices(self):
         self.voice.clear()
@@ -427,7 +455,7 @@ def main():
     app.setWindowIcon(icon)  # X11 _NET_WM_ICON for the taskbar
     win = ReaTuMe()
     win.setWindowIcon(icon)
-    win.resize(560, 200)
+    win.resize(680, 210)
     win.show()
     app.exec()
 
