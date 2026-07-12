@@ -8,7 +8,8 @@ background playback.
 `{title, text}` over a JS channel → `flutter_tts`. No backend.
 
 **Tech stack:** Flutter/Dart, `webview_flutter`, `flutter_tts`, `shared_preferences`,
-`receive_sharing_intent`, `audio_service`, vendored `readability.js`.
+`receive_sharing_intent`, `audio_service`, `speech_to_text` (Phase 7), vendored
+`readability.js`. Accessibility via Flutter `Semantics` + VoiceOver/TalkBack.
 
 ## Global constraints
 
@@ -102,6 +103,10 @@ shippable MVP.
       + settings), a progress indicator from the TTS progress stream, current title.
 - [ ] Error handling: extraction failure or empty text → a `SnackBar`/inline message
       ("Couldn't read this page") — never silent (lesson from desktop).
+- [ ] **Accessibility (from the start):** wrap every control in `Semantics` with clear
+      labels; sensible focus order; announce state changes ("Reading", "Paused",
+      "No article found") via `SemanticsService.announce`. Verify with VoiceOver
+      (iOS) and TalkBack (Android) that the whole MVP is operable eyes-free.
 - [ ] `main.dart`: init TTS + settings before `runApp`.
 - [ ] Verify (manual): read a real article end-to-end on iOS and Android; Stop works;
       speed persists across relaunch; a blank page shows the error message.
@@ -154,6 +159,34 @@ shippable MVP.
 - [ ] Verify: full pass on a physical iPhone and Android phone; voices switch and persist.
 
 ---
+
+## Phase 7 — Eyes-free voice control
+
+**Deliverable:** the app can be driven hands-free by spoken commands, with spoken
+confirmations. (Screen-reader support from Phase 3 + media controls from Phase 5 are
+prerequisites and already give a large amount of eyes-free capability.)
+
+**Files:** `lib/services/voice_control.dart`, `lib/services/command_parser.dart`, plus
+platform assistant config
+
+- [ ] Add `speech_to_text`. `voice_control.dart`: **push-to-talk** — a large button
+      (and double-tap-anywhere gesture) starts listening; on result, pass the transcript
+      to the parser. On-device recognition where available; request mic permission with
+      a clear rationale (opt-in).
+- [ ] `command_parser.dart`: keyword → action map (no LLM). Commands: `read that`,
+      `pause`, `resume`/`play`, `stop`, `faster`, `slower`, `restart`, `next`/`skip`,
+      `what is this` (announce title). Unknown → spoken "Sorry, I didn't catch that."
+- [ ] **Spoken confirmation** for every action via the TTS service
+      ("Paused.", "Reading from <site>.", "No article found."); optional haptic.
+- [ ] Platform assistant hooks: iOS **App Intents** (Siri) and Android **Assistant
+      App Actions** for "read this / read that in ReaTuMe" so the OS wake word launches
+      the action. (Custom "Hey ReaTuMe" wake word is explicitly out of scope for v1.)
+- [ ] **Never require URL dictation** — voice intake routes through share/clipboard/
+      "read that", not spelled-out URLs.
+- [ ] Verify (manual, eyes-closed test): complete a full session — trigger, "read that"
+      on a shared page, "faster", "pause", "resume", "stop" — without looking at the
+      screen, on both platforms. Unit-test `command_parser` (transcript → action) with
+      a table of phrasings.
 
 ## Testing strategy
 

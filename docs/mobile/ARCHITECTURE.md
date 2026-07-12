@@ -139,6 +139,41 @@ Each service has one job and a clean interface, so they're testable in isolation
 - **Long-article background playback** → `audio_service` foreground service (Android)
   and background audio mode (iOS); chunk very long text to keep TTS engines happy.
 
+## 9a. Accessibility & 100% voice control (low/no-vision users)
+
+This is an audio-first app, so eyes-free operation is a first-class goal, not an
+add-on. Achieved in layers — lean on the platform for the hard parts rather than
+building a wake-word engine.
+
+1. **Screen-reader accessibility (foundation).** Full support for **VoiceOver**
+   (iOS) and **TalkBack** (Android): `Semantics` labels on every control, sensible
+   focus order, live-region announcements for state changes. This alone makes the
+   app usable eyes-free with no custom voice tech. *Baked in from Phase 3, not deferred.*
+2. **Hardware media controls.** Headset / Bluetooth / lock-screen play-pause-next
+   drive playback hands-free with zero speech recognition — nearly free once
+   `audio_service` (Phase 5) lands.
+3. **In-app voice commands.** `speech_to_text` (iOS Speech / Android
+   SpeechRecognizer, on-device where available) + a **small keyword parser** (no
+   LLM) mapping "pause / resume / faster / slower / restart / stop / read that" to
+   actions. **Push-to-talk** (large button or double-tap anywhere) beats
+   always-listening for reliability and battery.
+4. **Platform assistant integration.** Siri **App Intents** (iOS) and Google
+   **Assistant App Actions** (Android) so the OS wake word triggers app actions
+   ("Hey Siri, read this in ReaTuMe") — borrow the platform's always-on listener.
+5. **Custom wake word (optional, advanced).** "Hey ReaTuMe" via an on-device engine
+   (e.g. Picovoice Porcupine), foreground-only on iOS. Last, if ever.
+
+**Design rules for eyes-free:**
+- **Never make the user dictate a URL** (painful). Drive intake via the share sheet
+  ("read that"), clipboard, or voice→search instead.
+- **Every action is confirmed by voice** ("Paused.", "Reading from BBC.", "No
+  article found.") plus optional earcons/haptics — the app narrates itself.
+- On-device STT preferred; microphone use is opt-in and disclosed.
+- iOS background microphone is restricted → rely on foreground push-to-talk + Siri,
+  not background always-listening.
+
+Layers 1–2 are cheap and always-on; layer 3 is a dedicated phase; 4–5 are enhancements.
+
 ## 10. Roadmap
 
 - **MVP (Phase 1–3):** URL field → load → extract → speak; play/stop; speed; voice picker.
