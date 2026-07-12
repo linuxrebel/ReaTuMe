@@ -72,7 +72,9 @@ sudo ./install.sh      # install or update (re-run to update)
 sudo ./uninstall.sh    # remove app, command, and ~/.local/reatume config
 ```
 
-Both require root. After install, `reatume` works from anywhere.
+Both require root. After install, `reatume` works from anywhere, and ReaTuMe
+appears in your application menu (icon + `.desktop` entry installed to the
+hicolor theme and `/usr/share/applications`).
 
 ## GUI
 

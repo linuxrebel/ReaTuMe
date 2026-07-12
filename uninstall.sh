@@ -6,6 +6,8 @@ set -euo pipefail
 
 DEST="/opt/reatume"
 BIN="/usr/local/bin/reatume"
+ICON="/usr/share/icons/hicolor/scalable/apps/reatume.svg"
+DESKTOP="/usr/share/applications/reatume.desktop"
 
 # Must be root to remove from /opt and /usr/local/bin.
 if [ "$(id -u)" -ne 0 ]; then
@@ -19,6 +21,11 @@ rm -f "$BIN"
 
 echo "Removing $DEST"
 rm -rf "$DEST"
+
+echo "Removing icon + desktop entry"
+rm -f "$ICON" "$DESKTOP"
+gtk-update-icon-cache -q -t /usr/share/icons/hicolor 2>/dev/null || true
+update-desktop-database /usr/share/applications 2>/dev/null || true
 
 # Config lives in the invoking user's home, not root's. Resolve via SUDO_USER.
 if [ -n "${SUDO_USER:-}" ]; then
