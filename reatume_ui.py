@@ -431,6 +431,13 @@ class ReaTuMe(QWidget):
 
     def _close_loading(self):
         if self._loading is not None:
+            # QProgressDialog.close() emits `canceled`; disconnect first so a
+            # programmatic close (audio starting) is NOT treated as a user cancel
+            # that would kill the reader.
+            try:
+                self._loading.canceled.disconnect(self._stop_reader)
+            except (RuntimeError, TypeError):
+                pass
             self._loading.close()
             self._loading = None
 
