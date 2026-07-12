@@ -137,6 +137,8 @@ class ReaTuMe(QWidget):
         self.reader = None  # QProcess for the Go/read action
         self._loading = None  # transient "Loading…" dialog during fetch+extract
         self._dl = None  # QProcess for a background voice download
+        self._reader_err = ""
+        self._reading = False
         self._build()
         # First run with Piper but no voice: grab amy-medium so it works now.
         QTimer.singleShot(0, self._ensure_default_voice)
@@ -373,9 +375,12 @@ class ReaTuMe(QWidget):
             self.status.setText("Enter a URL first.")
             return
         self._save()
+        self._reader_err = ""
+        self._reading = False  # set once the CLI prints "Reading:" (audio began)
         self.reader = QProcess(self)
         self.reader.finished.connect(self._reader_done)
         self.reader.readyReadStandardError.connect(self._on_reader_stderr)
+        self.reader.errorOccurred.connect(self._reader_error)
         self.go_btn.setText("Stop")
         self.status.setText(f"Reading: {url}")
         self._show_loading()
@@ -408,9 +413,19 @@ class ReaTuMe(QWidget):
         if self.reader is None:
             return
         text = bytes(self.reader.readAllStandardError()).decode(errors="ignore")
+        self._reader_err += text
         # CLI prints "Reading: <title>" once fetch+extract finish and audio starts.
         if "Reading:" in text:
+            self._reading = True
             self._close_loading()
+
+    def _reader_error(self, err):
+        # e.g. "node" not on PATH when launched from a menu.
+        if err == QProcess.ProcessError.FailedToStart:
+            self._close_loading()
+            self.reader = None
+            self.go_btn.setText("Go")
+            self.status.setText("Could not start 'node'. Is Node.js installed and on PATH?")
 
     def _stop_reader(self):
         """SIGTERM the node reader; it reaps its espeak child. Hard-kill if it
@@ -423,11 +438,20 @@ class ReaTuMe(QWidget):
         r.terminate()  # SIGTERM — node's handler kills espeak
         QTimer.singleShot(2000, lambda: r.kill() if r.state() != QProcess.ProcessState.NotRunning else None)
 
-    def _reader_done(self):
+    def _reader_done(self, code=0, status=None):
         self._close_loading()
         self.reader = None
         self.go_btn.setText("Go")
-        self.status.setText("Done.")
+        if self._reading:
+            self.status.setText("Done.")
+            return
+        # Finished without ever reaching audio — surface the reason from stderr.
+        reason = ""
+        for line in self._reader_err.splitlines():
+            line = line.strip()
+            if line.startswith("Error:") or "No readable" in line:
+                reason = line
+        self.status.setText(reason or "Nothing to read — page may be empty or blocking headless access.")
 
     def closeEvent(self, event):
         # Don't leave a reader (and its espeak child) running after the window closes.
