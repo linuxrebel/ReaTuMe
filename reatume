@@ -52,9 +52,16 @@ EXIT CODES:
 EOF
 }
 
+# Launch the GUI detached so the terminal is freed and the app survives the
+# terminal closing (setsid = new session, no controlling tty).
+launch_gui() {
+  setsid python3 "$SCRIPT_DIR/reatume_ui.py" >/dev/null 2>&1 < /dev/null &
+  exit 0
+}
+
 # No arguments: launch the GUI.
 if [ "$#" -eq 0 ]; then
-  exec python3 "$SCRIPT_DIR/reatume_ui.py"
+  launch_gui
 fi
 
 # Explicit help request.
@@ -64,7 +71,7 @@ case "${1:-}" in
     exit 0
     ;;
   --ui)
-    exec python3 "$SCRIPT_DIR/reatume_ui.py"
+    launch_gui
     ;;
 esac
 

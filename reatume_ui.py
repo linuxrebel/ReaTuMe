@@ -134,6 +134,7 @@ class ReaTuMe(QWidget):
         self.setWindowTitle("ReaTuMe — read a page aloud")
         self.cfg = load_config()
         self.reader = None  # QProcess for the Go/read action
+        self._loading = None  # transient "Loading…" dialog during fetch+extract
         self._build()
 
     def _build(self):
@@ -345,8 +346,10 @@ class ReaTuMe(QWidget):
         self._save()
         self.reader = QProcess(self)
         self.reader.finished.connect(self._reader_done)
+        self.reader.readyReadStandardError.connect(self._on_reader_stderr)
         self.go_btn.setText("Stop")
         self.status.setText(f"Reading: {url}")
+        self._show_loading()
         args = [str(CLI), url, "-s", str(self.cfg["speed"]), "-e", self.cfg["engine"]]
         if self.cfg["engine"] == "piper":
             if not self.cfg["piperModel"]:
@@ -356,9 +359,34 @@ class ReaTuMe(QWidget):
             args += ["-v", self.cfg["voice"], "-g", str(self.cfg["wordGap"])]
         self.reader.start("node", args)
 
+    # --- loading indicator ---
+    def _show_loading(self):
+        from PySide6.QtWidgets import QProgressDialog
+        dlg = QProgressDialog("Loading article…", "Cancel", 0, 0, self)  # 0,0 = busy
+        dlg.setWindowTitle("ReaTuMe")
+        dlg.setModal(False)
+        dlg.setMinimumDuration(0)
+        dlg.canceled.connect(self._stop_reader)
+        self._loading = dlg
+        dlg.show()
+
+    def _close_loading(self):
+        if self._loading is not None:
+            self._loading.close()
+            self._loading = None
+
+    def _on_reader_stderr(self):
+        if self.reader is None:
+            return
+        text = bytes(self.reader.readAllStandardError()).decode(errors="ignore")
+        # CLI prints "Reading: <title>" once fetch+extract finish and audio starts.
+        if "Reading:" in text:
+            self._close_loading()
+
     def _stop_reader(self):
         """SIGTERM the node reader; it reaps its espeak child. Hard-kill if it
         somehow ignores the signal (should not happen)."""
+        self._close_loading()
         r = self.reader
         if r is None:
             return
@@ -367,6 +395,7 @@ class ReaTuMe(QWidget):
         QTimer.singleShot(2000, lambda: r.kill() if r.state() != QProcess.ProcessState.NotRunning else None)
 
     def _reader_done(self):
+        self._close_loading()
         self.reader = None
         self.go_btn.setText("Go")
         self.status.setText("Done.")
